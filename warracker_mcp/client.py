@@ -160,7 +160,12 @@ class WarrackerClient:
         return await self.get("/api/warranties", params=params)
 
     async def get_warranty(self, warranty_id: int) -> Any:
-        return await self.get(f"/api/warranties/{warranty_id}")
+        results = await self.get("/api/warranties", params={"id": warranty_id})
+        if isinstance(results, list) and len(results) > 0:
+            return results[0]
+        if isinstance(results, dict):
+            return results
+        return {"error": f"Warranty {warranty_id} not found"}
 
     async def create_warranty(
         self,
@@ -204,7 +209,16 @@ class WarrackerClient:
         fields: dict[str, Any],
         file_uploads: list[tuple[str, str, bytes]] | None = None,
     ) -> Any:
+        current = await self.get_warranty(warranty_id)
+        if not current or "error" in current:
+            return current
+
         data: dict[str, Any] = {}
+        if "product_name" not in fields and current.get("product_name"):
+            data["product_name"] = current["product_name"]
+        if "purchase_date" not in fields and current.get("purchase_date"):
+            data["purchase_date"] = current["purchase_date"]
+
         for key, value in fields.items():
             if value is None:
                 continue
@@ -242,10 +256,18 @@ class WarrackerClient:
         file_name: str,
         content: bytes,
     ) -> Any:
+        current = await self.get_warranty(warranty_id)
+        if not current or "error" in current:
+            return current
+        data: dict[str, Any] = {}
+        if current.get("product_name"):
+            data["product_name"] = current["product_name"]
+        if current.get("purchase_date"):
+            data["purchase_date"] = current["purchase_date"]
         mime = _guess_mime(file_name)
         return await self.put_multipart(
             f"/api/warranties/{warranty_id}",
-            data={},
+            data=data,
             files=[(file_type, (file_name, content, mime))],
         )
 
