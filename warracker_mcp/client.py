@@ -214,10 +214,7 @@ class WarrackerClient:
             return current
 
         data: dict[str, Any] = {}
-        if "product_name" not in fields and current.get("product_name"):
-            data["product_name"] = current["product_name"]
-        if "purchase_date" not in fields and current.get("purchase_date"):
-            data["purchase_date"] = current["purchase_date"]
+        _ensure_required_put_fields(data, fields, current)
 
         for key, value in fields.items():
             if value is None:
@@ -260,10 +257,7 @@ class WarrackerClient:
         if not current or "error" in current:
             return current
         data: dict[str, Any] = {}
-        if current.get("product_name"):
-            data["product_name"] = current["product_name"]
-        if current.get("purchase_date"):
-            data["purchase_date"] = current["purchase_date"]
+        _ensure_required_put_fields(data, {}, current)
         mime = _guess_mime(file_name)
         return await self.put_multipart(
             f"/api/warranties/{warranty_id}",
@@ -295,6 +289,35 @@ class WarrackerClient:
 
     async def list_currencies(self) -> Any:
         return await self.get("/api/currencies")
+
+
+_DURATION_FIELDS = [
+    "warranty_duration_years",
+    "warranty_duration_months",
+    "warranty_duration_days",
+    "exact_expiration_date",
+]
+
+
+def _ensure_required_put_fields(
+    data: dict[str, Any], fields: dict[str, Any], current: dict[str, Any]
+) -> None:
+    if "product_name" not in fields and current.get("product_name"):
+        data["product_name"] = current["product_name"]
+    if "purchase_date" not in fields and current.get("purchase_date"):
+        data["purchase_date"] = current["purchase_date"]
+    has_duration = any(
+        k in fields
+        for k in _DURATION_FIELDS + ["is_lifetime"]
+    )
+    if not has_duration:
+        if current.get("is_lifetime"):
+            data["is_lifetime"] = "true"
+        else:
+            for df in _DURATION_FIELDS:
+                if current.get(df) is not None:
+                    data[df] = current[df]
+                    break
 
 
 def _guess_mime(filename: str) -> str:
