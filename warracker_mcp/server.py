@@ -185,13 +185,19 @@ async def warranties_list(
     Use `page` and `per_page` for pagination.
     """
     params = _clean({"search": search, "page": page, "per_page": per_page})
-    return await _client().list_warranties(params)
+    result = await _client().list_warranties(params)
+    if isinstance(result, list):
+        return {"warranties": result}
+    return result
 
 
 @mcp.tool
-async def tags_list() -> list | dict:
+async def tags_list() -> dict:
     """List all existing tags in Warracker."""
-    return await _client().list_tags()
+    result = await _client().list_tags()
+    if isinstance(result, list):
+        return {"tags": result}
+    return result
 
 
 @mcp.tool
@@ -207,9 +213,12 @@ async def tag_create(
 
 
 @mcp.tool
-async def currencies_list() -> list | dict:
+async def currencies_list() -> dict:
     """List all supported currencies in Warracker."""
-    return await _client().list_currencies()
+    result = await _client().list_currencies()
+    if isinstance(result, list):
+        return {"currencies": result}
+    return result
 
 
 @mcp.tool
