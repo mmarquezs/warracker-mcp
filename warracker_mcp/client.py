@@ -160,9 +160,11 @@ class WarrackerClient:
         return await self.get("/api/warranties", params=params)
 
     async def get_warranty(self, warranty_id: int) -> Any:
-        results = await self.get("/api/warranties", params={"id": warranty_id})
-        if isinstance(results, list) and len(results) > 0:
-            return results[0]
+        results = await self.get("/api/warranties")
+        if isinstance(results, list):
+            for w in results:
+                if w.get("id") == warranty_id:
+                    return w
         if isinstance(results, dict):
             return results
         return {"error": f"Warranty {warranty_id} not found"}
