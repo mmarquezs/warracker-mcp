@@ -315,7 +315,7 @@ def _ensure_required_put_fields(
             data["is_lifetime"] = "true"
         else:
             for df in _DURATION_FIELDS:
-                if current.get(df) is not None:
+                if current.get(df):
                     data[df] = current[df]
                     break
 
