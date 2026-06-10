@@ -293,6 +293,13 @@ class WarrackerClient:
         return await self.get("/api/currencies")
 
 
+_SKIP_FIELDS = {
+    "id", "created_at", "updated_at", "user_id", "claim_status_summary",
+    "product_photo_path", "invoice_path", "manual_path", "other_document_path",
+    "paperless_invoice_id", "paperless_manual_id", "paperless_other_id",
+    "paperless_photo_id",
+}
+
 _DURATION_FIELDS = [
     "warranty_duration_years",
     "warranty_duration_months",
@@ -304,21 +311,38 @@ _DURATION_FIELDS = [
 def _ensure_required_put_fields(
     data: dict[str, Any], fields: dict[str, Any], current: dict[str, Any]
 ) -> None:
-    if "product_name" not in fields and current.get("product_name"):
-        data["product_name"] = current["product_name"]
-    if "purchase_date" not in fields and current.get("purchase_date"):
-        data["purchase_date"] = current["purchase_date"]
+    import json
+
+    for key, value in current.items():
+        if key in _SKIP_FIELDS:
+            continue
+        if key in fields:
+            continue
+        if value is None or value == "" or value == 0:
+            continue
+
+        if key == "tags":
+            if isinstance(value, list):
+                data["tag_ids"] = json.dumps([t["id"] for t in value if isinstance(t, dict) and "id" in t])
+        elif key == "serial_numbers":
+            if isinstance(value, list):
+                data["serial_numbers[]"] = value
+        elif key == "is_lifetime":
+            data["is_lifetime"] = "true" if value else "false"
+        else:
+            data[key] = value
+
     has_duration = any(
         k in fields
         for k in _DURATION_FIELDS + ["is_lifetime"]
     )
     if not has_duration:
         if current.get("is_lifetime"):
-            data["is_lifetime"] = "true"
+            data.setdefault("is_lifetime", "true")
         else:
             for df in _DURATION_FIELDS:
                 if current.get(df):
-                    data[df] = current[df]
+                    data.setdefault(df, current[df])
                     break
 
 
